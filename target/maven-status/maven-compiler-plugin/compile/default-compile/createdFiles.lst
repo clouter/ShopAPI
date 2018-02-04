@@ -1,0 +1,4 @@
+com/megaele/request/ClientRequests.class
+com/megaele/webservice/PSWebServiceClient.class
+META-INF/maven/com.megaele/com.megaele.ShopApi/pom.properties
+META-INF/maven/com.megaele/com.megaele.ShopApi/pom.xml
