@@ -42,7 +42,7 @@ import org.w3c.dom.Document;
 import org.xml.sax.SAXException;
 
 /**
- * Creates and implements the connection and operations through prestashop webservice
+ * CRUD operations through Prestashop Api
  * 
  * @author rpila - 04/04/2018
  *

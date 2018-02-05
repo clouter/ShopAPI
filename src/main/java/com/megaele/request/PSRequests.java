@@ -1,6 +1,9 @@
 package com.megaele.request;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import javax.xml.transform.TransformerException;
 
@@ -16,16 +19,16 @@ import com.megaele.webservice.PSWebServiceClient;
 
 
 /**
- * Lists all the products in the shop.
+ * Handles every connection and operation through PrestaShop Api
  * 
  * @author rpila - 04/04/2018
  *
  */
-public class ClientRequests {
+public class PSRequests {
 
-	static Document doc;
-	static HashMap<String,Object> getSchemaOpt = new HashMap<String, Object>();
-	static String PRODUCT_URL = "http://megaelectrodomesticos.com/api/products/465";
+	Document doc;
+	HashMap<String,Object> getSchemaOpt = new HashMap<String, Object>();
+
 	
 	/**
 	 * Connects to Presta API
@@ -34,7 +37,7 @@ public class ClientRequests {
 	 * @param debug
 	 * @return
 	 */
-	private static PSWebServiceClient connect(String url, String key, boolean debug) {
+	public PSWebServiceClient connect(String url, String key, boolean debug) {
 		PSWebServiceClient ws = new PSWebServiceClient(url, key, debug);
 		return ws;
 	}
@@ -49,43 +52,45 @@ public class ClientRequests {
 	 * @throws Exception
 	 */
 	@SuppressWarnings("unused")
-	private static NodeList get(PSWebServiceClient ws, HashMap<String, Object> getSchemaOpt, String url, String tag) throws Exception {
+	private NodeList get(PSWebServiceClient ws, HashMap<String, Object> getSchemaOpt, String url, String tag) throws Exception {
 		getSchemaOpt.put("url",url);       
 		Document doc = ws.get(getSchemaOpt);    
 		return doc.getElementsByTagName(tag);
 	}
 	
 	
-	public static void main(String[] args) {
-		try {
-			PSWebServiceClient ws = connect("http://megaelectrodomesticos.com/", "DQC6RCXBXH379EA38I75P7XXHA52HHB8", false);
-			
-			
-			disableProduct(ws);
-			
-			refillStock(ws);
-			
-			
-//			NodeList nodeList = get(ws, getSchemaOpt, "http://www.megaelectrodomesticos.com/api/products", "product");
-//			List<String> productIds = new ArrayList<String>();
-//			for (int i = 0; i < nodeList.getLength(); i++) {
-//				productIds.add(nodeList.item(i).getAttributes().getNamedItem("id").getTextContent());
-//			 }
-//			
-//			for (String id: productIds) {
-//				getSchemaOpt.put("url","http://www.megaelectrodomesticos.com/api/products/" + id);
-//				if (id.equals("465")){
-//					doc = ws.get(getSchemaOpt);
-//					doc.getElementsByTagName("on_sale").item(0).getChildNodes().item(0).setNodeValue("1");
-//					System.out.println(ws.DocumentToString(doc));
-//					ws.edit(getSchemaOpt);
-//				}
-//			}
-			}catch (Exception e) {
-				e.printStackTrace();
-			}
-		}
+	/**
+	 * Returns the product ids that currently are in the shop.
+	 * 
+	 * @param ws
+	 * @throws Exception
+	 */
+	public List<String> getProductAttribute(PSWebServiceClient ws, String attribute) throws Exception {
+		NodeList nodeList = get(ws, getSchemaOpt, "http://www.megaelectrodomesticos.com/api/products", "product");
+		List<String> productAtts = new ArrayList<String>();
+		for (int i = 0; i < nodeList.getLength(); i++) {
+			productAtts.add(nodeList.item(i).getAttributes().getNamedItem(attribute).getTextContent());
+		 }
+		return productAtts;
+	}
 
+	
+	/**
+	 * Returns the product reference and their price.
+	 * 
+	 * @param ws
+	 * @throws Exception
+	 */
+	public Map<String, String> getProductRefAndPrice(PSWebServiceClient ws, String id) throws Exception {
+		Document doc = prepareXML(ws, "http://www.megaelectrodomesticos.com/api/products" + "/" + id);
+		Map<String, String> map = new HashMap<String, String>();
+		if (doc.getElementsByTagName("reference").item(0).getChildNodes().item(0) != null) {
+			map.put(doc.getElementsByTagName("reference").item(0).getChildNodes().item(0).getNodeValue(),
+					doc.getElementsByTagName("price").item(0).getChildNodes().item(0).getNodeValue());
+		}
+		return map;
+	}
+	
 	/**
 	 * Always replenish stock in prestashop, stock would be managed by ERP 
 	 * 
@@ -93,9 +98,9 @@ public class ClientRequests {
 	 * @throws Exception
 	 * @throws TransformerException
 	 */
-	private static void refillStock(PSWebServiceClient ws) throws Exception, TransformerException {
+	public void refillStock(PSWebServiceClient ws) throws Exception, TransformerException {
 		String stockUrl = doc.getElementsByTagName("stock_available").item(0).getAttributes().item(0).getNodeValue();
-		prepareXML(ws, stockUrl);
+		Document doc = prepareXML(ws, stockUrl);
 		doc.getElementsByTagName("quantity").item(0).getChildNodes().item(0).setNodeValue("100");
 		
 		getSchemaOpt.put("putXml", ws.DocumentToString(doc));
@@ -110,14 +115,14 @@ public class ClientRequests {
 	 * @throws Exception
 	 * @throws TransformerException
 	 */
-	private static void disableProduct(PSWebServiceClient ws) throws Exception, TransformerException {
-		prepareXML(ws, PRODUCT_URL);
+	public void disableProduct(PSWebServiceClient ws, String url) throws Exception, TransformerException {
+		Document doc = prepareXML(ws, url);
 
 		doc.getElementsByTagName("active").item(0).getChildNodes().item(0).setNodeValue("0");
 		removeMandatoryNodes();
 		getSchemaOpt.put("putXml", ws.DocumentToString(doc));
 		
-		updateXML(ws, PRODUCT_URL);
+		updateXML(ws, url);
 	}
 
 	/**
@@ -128,9 +133,9 @@ public class ClientRequests {
 	 * @throws Exception
 	 * @throws TransformerException
 	 */
-	private static void prepareXML(PSWebServiceClient ws, String url) throws Exception, TransformerException {
+	private Document prepareXML(PSWebServiceClient ws, String url) throws Exception, TransformerException {
 		getSchemaOpt.put("url",url);
-		doc = ws.get(getSchemaOpt);
+		return ws.get(getSchemaOpt);
 	}
 	
 	/**
@@ -140,7 +145,7 @@ public class ClientRequests {
 	 * @throws TransformerException
 	 * @throws Exception
 	 */
-	private static void updateXML(PSWebServiceClient ws, String url) throws TransformerException, Exception {
+	private void updateXML(PSWebServiceClient ws, String url) throws TransformerException, Exception {
 		StringEntity entity = new StringEntity(ws.DocumentToString(doc), ContentType.create("text/xml", Consts.UTF_8));
 		HttpPut httpput = new HttpPut(url);
 		httpput.setEntity(entity);
@@ -154,7 +159,7 @@ public class ClientRequests {
 	 * Completely mandatory delete these nodes before any product update 
 	 *
 	 */
-	private static void removeMandatoryNodes() {
+	private void removeMandatoryNodes() {
 		Element element = (Element)doc.getElementsByTagName("quantity").item(0);
 		element.getParentNode().removeChild(element);
 		element = (Element)doc.getElementsByTagName("manufacturer_name").item(0);
