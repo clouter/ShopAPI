@@ -26,9 +26,6 @@ import com.megaele.webservice.PSWebServiceClient;
  */
 public class PSRequests {
 
-	Document doc;
-	HashMap<String,Object> getSchemaOpt = new HashMap<String, Object>();
-
 	
 	/**
 	 * Connects to Presta API
@@ -65,12 +62,18 @@ public class PSRequests {
 	 * @param ws
 	 * @throws Exception
 	 */
-	public List<String> getProductAttribute(PSWebServiceClient ws, String attribute) throws Exception {
-		NodeList nodeList = get(ws, getSchemaOpt, "http://www.megaelectrodomesticos.com/api/products", "product");
+	public List<String> getProductAttribute(PSWebServiceClient ws, String attribute, String url) throws Exception {
 		List<String> productAtts = new ArrayList<String>();
-		for (int i = 0; i < nodeList.getLength(); i++) {
-			productAtts.add(nodeList.item(i).getAttributes().getNamedItem(attribute).getTextContent());
-		 }
+		HashMap<String,Object> getSchemaOpt = new HashMap<String, Object>();
+		try {
+			NodeList nodeList = get(ws, getSchemaOpt, url, "product");
+			for (int i = 0; i < nodeList.getLength(); i++) {
+				productAtts.add(nodeList.item(i).getAttributes().getNamedItem(attribute).getTextContent());
+			 }
+		}catch (Exception e) {
+			System.out.println("Exception getting attribute: " + attribute + "of the product: " + url);
+			e.printStackTrace();
+		}
 		return productAtts;
 	}
 
@@ -81,15 +84,54 @@ public class PSRequests {
 	 * @param ws
 	 * @throws Exception
 	 */
-	public Map<String, String> getProductRefAndPrice(PSWebServiceClient ws, String id) throws Exception {
-		Document doc = prepareXML(ws, "http://www.megaelectrodomesticos.com/api/products" + "/" + id);
+	public Map<String, String> getProductRefAndPrice(PSWebServiceClient ws, String url) throws Exception {
 		Map<String, String> map = new HashMap<String, String>();
-		if (doc.getElementsByTagName("reference").item(0).getChildNodes().item(0) != null) {
-			map.put(doc.getElementsByTagName("reference").item(0).getChildNodes().item(0).getNodeValue(),
-					doc.getElementsByTagName("price").item(0).getChildNodes().item(0).getNodeValue());
+		try {
+			Document doc = prepareXML(ws, url);
+			if (doc.getElementsByTagName("reference").item(0).getChildNodes().item(0) != null) {
+				map.put(doc.getElementsByTagName("reference").item(0).getChildNodes().item(0).getNodeValue(),
+						doc.getElementsByTagName("price").item(0).getChildNodes().item(0).getNodeValue());
+			}
+		}catch (Exception e) {
+			System.out.println("Exception getting reference and price of the product: " + url);
+			e.printStackTrace();
 		}
 		return map;
 	}
+	
+	
+	/**
+	 * Returns the product reference and their price from the meta_title
+	 * 
+	 * @param ws
+	 * @throws Exception
+	 */
+	public Map<String, String> getProductRefAndPriceFromMetaTitle(PSWebServiceClient ws, String url) throws Exception {
+		Map<String, String> map = new HashMap<String, String>();
+		try {
+		Document doc = prepareXML(ws, url);
+		if (doc.getElementsByTagName("meta_title").item(0).getChildNodes().item(0) != null) {
+			try {
+				String result = null;
+				String metaTitle = doc.getElementsByTagName("meta_title").item(0).getFirstChild().getFirstChild().getTextContent();
+				
+				String[] tokens = metaTitle.split("\\|");
+				result = tokens[0].split(" ")[tokens[0].split(" ").length-1];
+				
+				map.put(result,	doc.getElementsByTagName("price").item(0).getChildNodes().item(0).getNodeValue());
+			}catch(Exception e) {
+				System.out.println("Exception parsing metatitle with " + doc.getElementsByTagName("meta_title").item(0).getChildNodes().item(0));
+				e.printStackTrace();
+			}
+		}
+		}catch (Exception e) {
+			System.out.println("Exception getting reference and price from meta tile of the product: " + url);
+			e.printStackTrace();
+		}
+		return map;
+
+	}
+	
 	
 	/**
 	 * Always replenish stock in prestashop, stock would be managed by ERP 
@@ -98,15 +140,42 @@ public class PSRequests {
 	 * @throws Exception
 	 * @throws TransformerException
 	 */
-	public void refillStock(PSWebServiceClient ws) throws Exception, TransformerException {
-		String stockUrl = doc.getElementsByTagName("stock_available").item(0).getAttributes().item(0).getNodeValue();
-		Document doc = prepareXML(ws, stockUrl);
-		doc.getElementsByTagName("quantity").item(0).getChildNodes().item(0).setNodeValue("100");
-		
-		getSchemaOpt.put("putXml", ws.DocumentToString(doc));
-		
-		updateXML(ws, stockUrl);
+	public void refillStock(PSWebServiceClient ws, String url) throws Exception, TransformerException {
+		HashMap<String,Object> getSchemaOpt = new HashMap<String, Object>();
+		try {
+			Document doc = prepareXML(ws, url);
+			String stockUrl = doc.getElementsByTagName("stock_available").item(0).getAttributes().item(0).getNodeValue();
+			doc = prepareXML(ws, stockUrl);
+			doc.getElementsByTagName("quantity").item(0).getChildNodes().item(0).setNodeValue("100");
+			getSchemaOpt.put("putXml", ws.DocumentToString(doc));
+			updateXML(ws, doc, stockUrl);
+		}catch (Exception e) {
+			System.out.println("Exception refilling stock for product: " + url);
+			e.printStackTrace();
+		}
 	}
+	
+	/**
+	 * Update price for certain product given.
+	 * 
+	 * @param ws
+	 * @throws Exception
+	 * @throws TransformerException
+	 */
+	public void updatePrice(PSWebServiceClient ws, String url) throws Exception, TransformerException {
+		try {
+			Document doc = prepareXML(ws, url);
+			Float price = Float.valueOf(doc.getElementsByTagName("price").item(0).getChildNodes().item(0).getNodeValue());
+			price = (float) (price - 30.0);
+			doc.getElementsByTagName("price").item(0).getChildNodes().item(0).setNodeValue(price.toString());
+			removeMandatoryNodes(doc);
+			updateXML(ws, doc, url);
+		}catch (Exception e) {
+			System.out.println("Exception updating product: " + url);
+			e.printStackTrace();
+		}
+	}
+	
 
 	/**
 	 * Marks as unactive product given
@@ -116,13 +185,15 @@ public class PSRequests {
 	 * @throws TransformerException
 	 */
 	public void disableProduct(PSWebServiceClient ws, String url) throws Exception, TransformerException {
+		try {
 		Document doc = prepareXML(ws, url);
-
 		doc.getElementsByTagName("active").item(0).getChildNodes().item(0).setNodeValue("0");
-		removeMandatoryNodes();
-		getSchemaOpt.put("putXml", ws.DocumentToString(doc));
-		
-		updateXML(ws, url);
+		removeMandatoryNodes(doc);
+		updateXML(ws, doc, url);
+		}catch (Exception e) {
+			System.out.println("Exception disabling product: " + url);
+			e.printStackTrace();
+		}
 	}
 
 	/**
@@ -134,6 +205,7 @@ public class PSRequests {
 	 * @throws TransformerException
 	 */
 	private Document prepareXML(PSWebServiceClient ws, String url) throws Exception, TransformerException {
+		HashMap<String,Object> getSchemaOpt = new HashMap<String, Object>();
 		getSchemaOpt.put("url",url);
 		return ws.get(getSchemaOpt);
 	}
@@ -145,13 +217,13 @@ public class PSRequests {
 	 * @throws TransformerException
 	 * @throws Exception
 	 */
-	private void updateXML(PSWebServiceClient ws, String url) throws TransformerException, Exception {
+	private void updateXML(PSWebServiceClient ws, Document doc, String url) throws TransformerException, Exception {
 		StringEntity entity = new StringEntity(ws.DocumentToString(doc), ContentType.create("text/xml", Consts.UTF_8));
 		HttpPut httpput = new HttpPut(url);
 		httpput.setEntity(entity);
-
 		HashMap<String, Object> result = ws.executeRequest(httpput);
 		ws.checkStatusCode((Integer) result.get("status_code"));
+
 	}
 
 	/**
@@ -159,7 +231,7 @@ public class PSRequests {
 	 * Completely mandatory delete these nodes before any product update 
 	 *
 	 */
-	private void removeMandatoryNodes() {
+	private void removeMandatoryNodes(Document doc) {
 		Element element = (Element)doc.getElementsByTagName("quantity").item(0);
 		element.getParentNode().removeChild(element);
 		element = (Element)doc.getElementsByTagName("manufacturer_name").item(0);
