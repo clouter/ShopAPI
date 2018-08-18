@@ -21,7 +21,9 @@ import com.megaele.webservice.PSWebServiceClient;
 /**
  * Handles every connection and operation through PrestaShop Api
  * 
- * @author rpila - 04/04/2018
+ * @author rpila 
+ * 
+ * @version 1.0 - 04/04/2018
  *
  */
 public class PSRequests {
@@ -48,7 +50,6 @@ public class PSRequests {
 	 * @return
 	 * @throws Exception
 	 */
-	@SuppressWarnings("unused")
 	private NodeList get(PSWebServiceClient ws, HashMap<String, Object> getSchemaOpt, String url, String tag) throws Exception {
 		getSchemaOpt.put("url",url);       
 		Document doc = ws.get(getSchemaOpt);    
@@ -156,17 +157,35 @@ public class PSRequests {
 	}
 	
 	/**
-	 * Update price for certain product given.
+	 * Update price for certain product given, passing as parameter the price to be updated
 	 * 
 	 * @param ws
 	 * @throws Exception
 	 * @throws TransformerException
 	 */
-	public void updatePrice(PSWebServiceClient ws, String url) throws Exception, TransformerException {
+	public void updatePrice(PSWebServiceClient ws, String url, Float finalPrice) throws Exception, TransformerException {
+		try {
+			Document doc = prepareXML(ws, url);
+			doc.getElementsByTagName("price").item(0).getChildNodes().item(0).setNodeValue(finalPrice.toString());
+			removeMandatoryNodes(doc);
+			updateXML(ws, doc, url);
+		}catch (Exception e) {
+			System.out.println("Exception updating product: " + url);
+			e.printStackTrace();
+		}
+	}
+	
+	/**
+	 * Update price for certain product given adding or subtracting the modifier var
+	 * 
+	 * @param ws
+	 * @throws Exception
+	 * @throws TransformerException
+	 */
+	public void updatePriceFromModifier(PSWebServiceClient ws, String url, Float modifier) throws Exception, TransformerException {
 		try {
 			Document doc = prepareXML(ws, url);
 			Float price = Float.valueOf(doc.getElementsByTagName("price").item(0).getChildNodes().item(0).getNodeValue());
-			price = (float) (price - 30.0);
 			doc.getElementsByTagName("price").item(0).getChildNodes().item(0).setNodeValue(price.toString());
 			removeMandatoryNodes(doc);
 			updateXML(ws, doc, url);

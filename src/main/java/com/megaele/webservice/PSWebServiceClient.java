@@ -44,7 +44,9 @@ import org.xml.sax.SAXException;
 /**
  * CRUD operations through Prestashop Api
  * 
- * @author rpila - 04/04/2018
+ * @author rpila 
+ * 
+ * @version 1.0 - 04/04/2018
  *
  */
 public class PSWebServiceClient {
