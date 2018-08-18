@@ -5,10 +5,13 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 
+import org.apache.log4j.Logger;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+
+import com.megaele.application.ClientApplication;
 
 /**
  * 
@@ -21,6 +24,8 @@ import org.jsoup.select.Elements;
  */
 public class ProxyFactory {
 
+	final static Logger logger = Logger.getLogger(ProxyFactory.class);
+	
 	public final String USER_AGENT = "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/45.0.2454.101 Safari/537.36";
 	
 	private LinkedHashMap<String, String> getProxyList() {
@@ -39,6 +44,7 @@ public class ProxyFactory {
 			}
 			
 		} catch (IOException e) {
+			logger.error(e);
 			System.err.println(e);  
 		}
 		return proxies;
@@ -50,7 +56,7 @@ public class ProxyFactory {
 		String key = (new ArrayList<String>(proxies.keySet())).get(randomNumber);		
 		String value = (new ArrayList<String>(proxies.values())).get(randomNumber);
 		String[] result = {key, value};
-		System.out.println("URL Proxy:" + key + ":" + value);
+		logger.info("URL Proxy:" + key + ":" + value);
 		return result;
 	}
 	

@@ -11,10 +11,12 @@ import org.apache.http.Consts;
 import org.apache.http.client.methods.HttpPut;
 import org.apache.http.entity.ContentType;
 import org.apache.http.entity.StringEntity;
+import org.apache.log4j.Logger;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 
+import com.megaele.crawling.UserAgentFactory;
 import com.megaele.webservice.PSWebServiceClient;
 
 
@@ -27,17 +29,18 @@ import com.megaele.webservice.PSWebServiceClient;
  *
  */
 public class PSRequests {
-
+	
+	final static Logger logger = Logger.getLogger(PSRequests.class);
 	
 	/**
 	 * Connects to Presta API
 	 * @param url
 	 * @param key
-	 * @param debug
+	 * @param info
 	 * @return
 	 */
-	public PSWebServiceClient connect(String url, String key, boolean debug) {
-		PSWebServiceClient ws = new PSWebServiceClient(url, key, debug);
+	public PSWebServiceClient connect(String url, String key, boolean info) {
+		PSWebServiceClient ws = new PSWebServiceClient(url, key, info);
 		return ws;
 	}
 	
@@ -72,7 +75,8 @@ public class PSRequests {
 				productAtts.add(nodeList.item(i).getAttributes().getNamedItem(attribute).getTextContent());
 			 }
 		}catch (Exception e) {
-			System.out.println("Exception getting attribute: " + attribute + "of the product: " + url);
+			logger.info("Exception getting attribute: " + attribute + "of the product: " + url);
+			logger.error(e);
 			e.printStackTrace();
 		}
 		return productAtts;
@@ -94,7 +98,8 @@ public class PSRequests {
 						doc.getElementsByTagName("price").item(0).getChildNodes().item(0).getNodeValue());
 			}
 		}catch (Exception e) {
-			System.out.println("Exception getting reference and price of the product: " + url);
+			logger.info("Exception getting reference and price of the product: " + url);
+			logger.error(e);
 			e.printStackTrace();
 		}
 		return map;
@@ -121,12 +126,14 @@ public class PSRequests {
 				
 				map.put(result,	doc.getElementsByTagName("price").item(0).getChildNodes().item(0).getNodeValue());
 			}catch(Exception e) {
-				System.out.println("Exception parsing metatitle with " + doc.getElementsByTagName("meta_title").item(0).getChildNodes().item(0));
+				logger.info("Exception parsing metatitle with " + doc.getElementsByTagName("meta_title").item(0).getChildNodes().item(0));
+				logger.error(e);
 				e.printStackTrace();
 			}
 		}
 		}catch (Exception e) {
-			System.out.println("Exception getting reference and price from meta tile of the product: " + url);
+			logger.info("Exception getting reference and price from meta tile of the product: " + url);
+			logger.error(e);
 			e.printStackTrace();
 		}
 		return map;
@@ -151,7 +158,8 @@ public class PSRequests {
 			getSchemaOpt.put("putXml", ws.DocumentToString(doc));
 			updateXML(ws, doc, stockUrl);
 		}catch (Exception e) {
-			System.out.println("Exception refilling stock for product: " + url);
+			logger.info("Exception refilling stock for product: " + url);
+			logger.error(e);
 			e.printStackTrace();
 		}
 	}
@@ -170,7 +178,8 @@ public class PSRequests {
 			removeMandatoryNodes(doc);
 			updateXML(ws, doc, url);
 		}catch (Exception e) {
-			System.out.println("Exception updating product: " + url);
+			logger.info("Exception updating product: " + url);
+			logger.error(e);
 			e.printStackTrace();
 		}
 	}
@@ -190,7 +199,8 @@ public class PSRequests {
 			removeMandatoryNodes(doc);
 			updateXML(ws, doc, url);
 		}catch (Exception e) {
-			System.out.println("Exception updating product: " + url);
+			logger.info("Exception updating product: " + url);
+			logger.error(e);
 			e.printStackTrace();
 		}
 	}
@@ -210,7 +220,8 @@ public class PSRequests {
 		removeMandatoryNodes(doc);
 		updateXML(ws, doc, url);
 		}catch (Exception e) {
-			System.out.println("Exception disabling product: " + url);
+			logger.info("Exception disabling product: " + url);
+			logger.error(e);
 			e.printStackTrace();
 		}
 	}

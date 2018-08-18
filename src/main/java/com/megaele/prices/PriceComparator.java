@@ -3,6 +3,7 @@ package com.megaele.prices;
 import java.io.IOException;
 import java.util.concurrent.ThreadLocalRandom;
 
+import org.apache.log4j.Logger;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 
@@ -19,6 +20,7 @@ import com.megaele.crawling.UserAgentFactory;
  */
 public class PriceComparator {
 
+	final static Logger logger = Logger.getLogger(PriceComparator.class);
 	
 	/**
 	 * Returns best price among all our competitors
@@ -36,7 +38,7 @@ public class PriceComparator {
 					.userAgent(new UserAgentFactory().getUserAgent())
 					.get();
 			int randomNumber =  ThreadLocalRandom.current().nextInt(5, 10 + 1);
-			System.out.println("Waiting " + randomNumber*1000 + "ms");
+			logger.info("Waiting " + randomNumber*1000 + "ms");
 			Thread.sleep(randomNumber*1000);
 			if (doc.getElementsByClass("priceRange-from").size() > 0) {
 				price = doc.getElementsByClass("priceRange-from").get(0).text();
@@ -49,6 +51,7 @@ public class PriceComparator {
 				}
 			}
 		} catch (IOException e) {
+			logger.error(e);
 			System.err.println(e);  
 		}
 		return price;

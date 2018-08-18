@@ -38,8 +38,11 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
+import org.apache.log4j.Logger;
 import org.w3c.dom.Document;
 import org.xml.sax.SAXException;
+
+import com.megaele.request.PSRequests;
 
 /**
  * CRUD operations through Prestashop Api
@@ -51,9 +54,11 @@ import org.xml.sax.SAXException;
  */
 public class PSWebServiceClient {
 
+	final static Logger logger = Logger.getLogger(PSWebServiceClient.class);
+
 	protected String url;
 	protected String key;
-	protected boolean debug;
+	protected boolean info;
 
 	private final CloseableHttpClient httpclient;
 	private CloseableHttpResponse response;
@@ -64,12 +69,12 @@ public class PSWebServiceClient {
 	 * 
 	 * @param url Root URL for the shop
 	 * @param key Authentification key
-	 * @param debug Debug mode Activated (true) or deactivated (false)
+	 * @param info info mode Activated (true) or deactivated (false)
 	 */
-	public PSWebServiceClient(String url, String key, boolean debug) {
+	public PSWebServiceClient(String url, String key, boolean info) {
 		this.url = url;
 		this.key = key;
-		this.debug = debug;
+		this.info = info;
 
 		CredentialsProvider credsProvider = new BasicCredentialsProvider();
 		credsProvider.setCredentials(AuthScope.ANY, new UsernamePasswordCredentials(key, ""));
@@ -129,11 +134,11 @@ public class PSWebServiceClient {
 			Header[] headers = response.getAllHeaders();
 			HttpEntity entity = response.getEntity();
 
-			if (this.debug) {
-				System.out.println("Status:  " + response.getStatusLine());
-				System.out.println("====================Header======================");
+			if (this.info) {
+				logger.info("Status:  " + response.getStatusLine());
+				logger.info("====================Header======================");
 				for (Header h : headers) {
-					System.out.println(h.getName() + " : " + h.getValue());
+					logger.info(h.getName() + " : " + h.getValue());
 				}
 
 			}
@@ -142,6 +147,7 @@ public class PSWebServiceClient {
 			returns.put("header", headers);
 			this.responseReturns = returns;
 		} catch (IOException ex) {
+			logger.error(ex);
 			throw new Exception("Bad HTTP response : " + ex.toString());
 		}
 
@@ -202,6 +208,7 @@ public class PSWebServiceClient {
 				response.close();
 				return doc;
 			} catch (ParserConfigurationException | SAXException | IOException ex) {
+				logger.error(ex);
 				throw new Exception("Response XML Parse exception");
 			}
 
